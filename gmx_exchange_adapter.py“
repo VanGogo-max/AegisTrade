@@ -1,0 +1,132 @@
+"""
+GMX Exchange Adapter (FINAL)
+
+Роля:
+- Референтен exchange adapter за GMX
+- Превежда абстрактни trade intents към GMX transaction payloads
+- НЕ съдържа стратегия, риск логика или UI
+- НЕ пази ключове и НЕ подписва транзакции
+
+Проверими източници:
+- GMX Docs: https://docs.gmx.io
+- GMX GitHub: https://github.com/gmx-io
+"""
+
+from typing import Dict, Any
+from dataclasses import dataclass
+import time
+
+
+@dataclass(frozen=True)
+class GMXNetworkConfig:
+    name: str
+    router_address: str
+    vault_address: str
+    position_router_address: str
+    chain_id: int
+
+
+GMX_NETWORKS: Dict[str, GMXNetworkConfig] = {
+    "arbitrum": GMXNetworkConfig(
+        name="arbitrum",
+        router_address="ENV_GMX_ROUTER",
+        vault_address="ENV_GMX_VAULT",
+        position_router_address="ENV_GMX_POSITION_ROUTER",
+        chain_id=42161,
+    ),
+    "avalanche": GMXNetworkConfig(
+        name="avalanche",
+        router_address="ENV_GMX_ROUTER",
+        vault_address="ENV_GMX_VAULT",
+        position_router_address="ENV_GMX_POSITION_ROUTER",
+        chain_id=43114,
+    ),
+}
+
+
+class GMXExchangeAdapter:
+    """
+    GMX Exchange Adapter
+    """
+
+    def __init__(self, network: str, rpc_url: str):
+        if network not in GMX_NETWORKS:
+            raise ValueError(f"Unsupported GMX network: {network}")
+
+        self.network = GMX_NETWORKS[network]
+        self.rpc_url = rpc_url
+
+    # =========================
+    # Public Execution API
+    # =========================
+
+    def open_position(self, trade_intent: Dict[str, Any]) -> Dict[str, Any]:
+        self._validate_trade_intent(trade_intent, opening=True)
+
+        return {
+            "exchange": "GMX",
+            "network": self.network.name,
+            "action": "OPEN_POSITION",
+            "tx_payload": self._build_increase_position_tx(trade_intent),
+            "created_at": int(time.time()),
+        }
+
+    def close_position(self, trade_intent: Dict[str, Any]) -> Dict[str, Any]:
+        self._validate_trade_intent(trade_intent, opening=False)
+
+        return {
+            "exchange": "GMX",
+            "network": self.network.name,
+            "action": "CLOSE_POSITION",
+            "tx_payload": self._build_decrease_position_tx(trade_intent),
+            "created_at": int(time.time()),
+        }
+
+    # =========================
+    # Validation
+    # =========================
+
+    def _validate_trade_intent(self, trade_intent: Dict[str, Any], opening: bool) -> None:
+        required_fields = {"market", "side", "size_usd"}
+
+        missing = required_fields - trade_intent.keys()
+        if missing:
+            raise ValueError(f"Missing required fields: {missing}")
+
+        if trade_intent["side"] not in {"long", "short"}:
+            raise ValueError("side must be 'long' or 'short'")
+
+        if trade_intent["size_usd"] <= 0:
+            raise ValueError("size_usd must be positive")
+
+        if opening and "leverage" not in trade_intent:
+            raise ValueError("leverage is required when opening a position")
+
+    # =========================
+    # GMX Transaction Builders
+    # =========================
+
+    def _build_increase_position_tx(self, trade_intent: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "to": self.network.position_router_address,
+            "method": "createIncreasePosition",
+            "params": {
+                "market": trade_intent["market"],
+                "isLong": trade_intent["side"] == "long",
+                "sizeUsd": trade_intent["size_usd"],
+                "leverage": trade_intent["leverage"],
+                "acceptablePrice": trade_intent.get("acceptable_price"),
+            },
+        }
+
+    def _build_decrease_position_tx(self, trade_intent: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "to": self.network.position_router_address,
+            "method": "createDecreasePosition",
+            "params": {
+                "market": trade_intent["market"],
+                "isLong": trade_intent["side"] == "long",
+                "sizeUsd": trade_intent["size_usd"],
+                "acceptablePrice": trade_intent.get("acceptable_price"),
+            },
+        }
