@@ -1,0 +1,39 @@
+# deployment_config.yaml
+# GRSM Deployment Configuration
+
+# ----------------- General -----------------
+environment: production
+version: 1.0.0
+verbose: true
+
+# ----------------- Risk Settings -----------------
+max_drawdown_pct: 0.25
+max_daily_loss_pct: 0.10
+max_leverage: 5.0
+max_position_pct: 0.20
+max_correlated_exposure_pct: 0.50
+
+# ----------------- Execution -----------------
+default_starting_balance: 100000.0
+max_batch_size: 5
+order_timeout_sec: 2
+
+# ----------------- Health & Monitoring -----------------
+health_check_interval_sec: 1.0
+latency_critical_ms: 500
+
+# ----------------- Logging & Persistence -----------------
+snapshot_dir: snapshots
+event_log_file: event_log.json
+audit_log_file: audit.log
+
+# ----------------- Strategy Defaults -----------------
+default_strategies: 
+  - DummyStrategy
+
+# ----------------- Notification Channels -----------------
+notification_channels:
+  console: true
+  email: false
+  telegram: false
+  webhook: false
