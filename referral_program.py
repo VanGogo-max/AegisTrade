@@ -21,7 +21,8 @@ class ReferralProgram:
     Referral discount calculation logic.
     """
 
-    BASE_MONTHLY_PRICE_USDT = 10.0
+    BASE_MONTHLY_PRICE_USDT = float(os.getenv("SUBSCRIPTION_PRICE_USDT"))
+    
 
     def __init__(self, rule: ReferralRule) -> None:
         if not rule.is_valid():
