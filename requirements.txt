@@ -1,0 +1,45 @@
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+loguru>=0.7.2
+rich>=13.7.0
+
+# Async / Networking
+aiohttp>=3.9.1
+websockets>=12.0
+httpx>=0.26.0
+
+# Web3 / DEX
+web3>=6.15.1
+eth-account>=0.10.0
+eth-abi>=5.0.0
+eth-utils>=4.0.0
+pycryptodome>=3.20.0
+
+# Data / Analytics
+numpy>=1.26.0
+pandas>=2.2.0
+scipy>=1.11.0
+ta>=0.11.0
+
+# Time / Scheduling
+APScheduler>=3.10.4
+pytz>=2024.1
+
+# Persistence
+sqlalchemy>=2.0.25
+aiosqlite>=0.19.0
+
+# Monitoring / Metrics
+prometheus-client>=0.19.0
+
+# Testing / Research
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# Serialization / Messaging
+orjson>=3.9.10
+msgpack>=1.0.7
+
+# Security
+cryptography>=42.0.0
