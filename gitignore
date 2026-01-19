@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.env
+.venv
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+
+# Jupyter / Research
+.ipynb_checkpoints/
+*.ipynb
+notebooks/
+
+# Logs
+logs/
+*.log
+
+# Databases
+*.sqlite
+*.db
+data/
+
+# Secrets
+.env
+.env.*
+secrets/
+private_keys/
+keystore/
+wallet.json
+
+# Build / Dist
+build/
+dist/
+*.whl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Node (ако има frontend/monitor)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Blockchain
+artifacts/
+cache/
+broadcast/
