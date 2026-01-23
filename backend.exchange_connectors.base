@@ -1,0 +1,93 @@
+import asyncio
+import aiohttp
+from typing import Callable, Dict, Any, List
+
+from backend.exchange_connectors.base import BaseExchangeConnector
+
+# Променете с реалния subgraph endpoint за GMX, напр.
+# https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql
+GMX_SUBGRAPH_URL = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql"
+
+
+class GMXSubgraphConnector(BaseExchangeConnector):
+    """
+    GMX connector using The Graph subgraph (GraphQL).
+    Queries trades, positions, markets, funding, etc.
+    """
+
+    def __init__(
+        self,
+        on_message: Callable[[Dict[str, Any]], None],
+        poll_interval: float = 10.0,  # колко често да правим заявки
+    ):
+        super().__init__("gmx", [], on_message)
+        self.poll_interval = poll_interval
+        self.session: aiohttp.ClientSession | None = None
+
+    async def connect(self):
+        """
+        Този конектор не поддържа WebSocket, затова свършва
+        с polling loop към GraphQL endpoint-а.
+        """
+        async with aiohttp.ClientSession() as session:
+            self.session = session
+            while True:
+                try:
+                    await self._poll_subgraph()
+                except Exception as e:
+                    print(f"[GMX] Subgraph poll error: {e}, retry in {self.poll_interval}s")
+                    await asyncio.sleep(self.poll_interval)
+
+    async def disconnect(self):
+        if self.session:
+            await self.session.close()
+
+    async def _poll_subgraph(self):
+        """
+        Прави една заявка към subgraph-а и публикува резултатите.
+        Можеш да разшириш с повече query-та (positions, market data, trades и др.)
+        """
+        # Пример GraphQL query: последни сделки
+        query = """
+        query lastTrades($first: Int!) {
+          trades(first: $first, orderBy: timestamp, orderDirection: desc) {
+            id
+            timestamp
+            market {
+              name
+            }
+            account
+            size
+            price
+            side
+          }
+        }
+        """
+        variables = {"first": 10}
+
+        async with self.session.post(
+            GMX_SUBGRAPH_URL,
+            json={"query": query, "variables": variables},
+        ) as resp:
+            resp.raise_for_status()
+            result = await resp.json()
+
+        # Обработваме постъпилите записи
+        trades = result.get("data", {}).get("trades", [])
+        for t in trades:
+            event = {
+                "exchange": "gmx",
+                "symbol": t["market"]["name"],
+                "type": "trade",
+                "timestamp": int(t["timestamp"]),
+                "data": {
+                    "trade_id": t["id"],
+                    "price": float(t["price"]),
+                    "qty": float(t["size"]),
+                    "side": t["side"].lower(),
+                    "account": t["account"],
+                },
+            }
+            await self._safe_emit(event)
+
+        await asyncio.sleep(self.poll_interval)
