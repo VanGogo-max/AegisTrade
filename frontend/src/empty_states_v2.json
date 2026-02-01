@@ -1,0 +1,51 @@
+{
+  "empty_orderbook": {
+    "title": "No orderbook data",
+    "description": "Orderbook data is not available yet. Please connect to an exchange or wait for market data to load."
+  },
+
+  "empty_chart": {
+    "title": "Chart not ready",
+    "description": "Price chart will appear once market data is received from the exchange."
+  },
+
+  "empty_positions": {
+    "title": "No open positions",
+    "description": "You do not have any open positions yet. Start trading or enable a strategy to open positions automatically."
+  },
+
+  "empty_trades": {
+    "title": "No trade history",
+    "description": "Your executed trades will appear here once trading activity starts."
+  },
+
+  "empty_balances": {
+    "title": "Balances unavailable",
+    "description": "Account balances cannot be displayed. Please make sure your exchange connection is active."
+  },
+
+  "empty_orders": {
+    "title": "No active orders",
+    "description": "You currently have no open or pending orders."
+  },
+
+  "empty_exchange_connection": {
+    "title": "Exchange not connected",
+    "description": "Connect your exchange account to start receiving market data and place trades."
+  },
+
+  "empty_strategy": {
+    "title": "No strategy enabled",
+    "description": "Trading strategies are currently disabled. Enable or configure a strategy to allow automated trading."
+  },
+
+  "empty_subscription": {
+    "title": "Subscription required",
+    "description": "An active subscription is required to access this feature. Please upgrade your plan to continue."
+  },
+
+  "empty_onboarding": {
+    "title": "Setup not completed",
+    "description": "Complete the onboarding process to unlock all trading features."
+  }
+}
