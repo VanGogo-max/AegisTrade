@@ -1,3 +1,4 @@
+mkdir -p backend/bot && cat > backend/bot/trading_loop.py << 'EOF'
 import asyncio
 from decimal import Decimal
 
@@ -88,3 +89,5 @@ class TradingLoop:
 if __name__ == "__main__":
     loop = TradingLoop()
     asyncio.run(loop.run())
+EOF
+git add -A && git commit -m "feat: add trading_loop.py" && git push
