@@ -13,7 +13,7 @@ Does NOT depend on:
 from collections import deque
 from typing import Deque, List
 
-from strategy_base import StrategyBase
+from backend.strategies.strategy_base import StrategyBase
 
 
 class TurtleRSIStrategy(StrategyBase):
