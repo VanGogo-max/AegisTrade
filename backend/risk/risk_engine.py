@@ -1,56 +1,103 @@
-from dataclasses import dataclass
-from typing import Dict, Optional
+# risk_engine.py
+"""
+Risk Engine
 
+Role:
+- Converts signal into trade_intent
+- Manages:
+    - position sizing
+    - max leverage
+    - SL / TP
+    - max open positions
+    - daily drawdown limit
+"""
 
-@dataclass
-class RiskLimits:
-    max_position_size: float
-    max_notional: float
-    max_leverage: float
+from typing import Dict, Any
+from loguru import logger
+from datetime import date
 
 
 class RiskEngine:
+    def __init__(
+        self,
+        account_equity: float,
+        risk_per_trade: float = 0.01,       # 1% of equity
+        max_leverage: float = 10.0,
+        max_open_positions: int = 5,
+        max_daily_drawdown: float = 0.05    # 5% daily drawdown
+    ):
+        self.account_equity = account_equity
+        self.risk_per_trade = risk_per_trade
+        self.max_leverage = max_leverage
+        self.max_open_positions = max_open_positions
+        self.max_daily_drawdown = max_daily_drawdown
 
-    def __init__(self):
-        self.symbol_limits: Dict[str, RiskLimits] = {}
-        self.account_equity: float = 0.0
+        self.open_positions = 0
+        self.today = date.today()
+        self.today_pnl = 0.0
 
-    def set_account_equity(self, equity: float):
-        self.account_equity = equity
+    # ----------------------------
+    # Evaluate a signal
+    # ----------------------------
+    def evaluate(self, signal: Dict[str, Any]) -> Dict[str, Any] | None:
+        self._rollover_day_if_needed()
 
-    def set_symbol_limits(self, symbol: str, max_position_size: float, max_notional: float, max_leverage: float):
-        self.symbol_limits[symbol] = RiskLimits(
-            max_position_size=max_position_size,
-            max_notional=max_notional,
-            max_leverage=max_leverage,
-        )
+        if self._daily_drawdown_exceeded():
+            logger.warning("⛔ Daily drawdown limit reached. No trades allowed.")
+            return None
 
-    def validate_order(self, symbol: str, side: str, price: float, size: float, current_position: float) -> bool:
-        limits = self.symbol_limits.get(symbol)
-        if limits is None:
-            return True
+        if self.open_positions >= self.max_open_positions:
+            logger.warning("⛔ Max open positions reached. Skipping trade.")
+            return None
 
-        signed_size = size if side == "buy" else -size
-        new_position = current_position + signed_size
+        size_usd = self._calc_position_size()
+        leverage = min(signal.get("leverage", 1.0), self.max_leverage)
 
-        if abs(new_position) > limits.max_position_size:
-            return False
+        trade_intent = {
+            "exchange": signal["exchange"],
+            "action": signal["action"],       # "OPEN" / "CLOSE"
+            "market": signal["market"],
+            "side": signal["side"],
+            "size_usd": size_usd,
+            "leverage": leverage,
+            "order_type": signal.get("order_type", "market"),
+            "slippage": signal.get("slippage", 0.005),
+            "strategy": signal.get("strategy", "default"),
+        }
 
-        notional = abs(new_position * price)
-        if notional > limits.max_notional:
-            return False
+        logger.info(f"🛡 Risk approved trade: {trade_intent}")
+        return trade_intent
 
-        if self.account_equity > 0:
-            leverage = notional / self.account_equity
-            if leverage > limits.max_leverage:
-                return False
+    # ----------------------------
+    # Position sizing
+    # ----------------------------
+    def _calc_position_size(self) -> float:
+        return round(self.account_equity * self.risk_per_trade, 2)
 
-        return True
+    # ----------------------------
+    # Update PnL for drawdown
+    # ----------------------------
+    def update_pnl(self, pnl: float):
+        self._rollover_day_if_needed()
+        self.today_pnl += pnl
+        logger.info(f"📉 Daily PnL updated: {self.today_pnl:.2f}")
 
-    def calculate_notional(self, price: float, size: float) -> float:
-        return abs(price * size)
+    def _daily_drawdown_exceeded(self) -> bool:
+        return self.today_pnl <= -self.account_equity * self.max_daily_drawdown
 
-    def calculate_leverage(self, notional: float) -> float:
-        if self.account_equity == 0:
-            return 0.0
-        return notional / self.account_equity
+    def _rollover_day_if_needed(self):
+        from datetime import date
+        if date.today() != self.today:
+            self.today = date.today()
+            self.today_pnl = 0.0
+            logger.info("🔄 New trading day. Daily PnL reset.")
+
+    # ----------------------------
+    # Position counters
+    # ----------------------------
+    def on_position_opened(self):
+        self.open_positions += 1
+
+    def on_position_closed(self, pnl: float):
+        self.open_positions = max(0, self.open_positions - 1)
+        self.update_pnl(pnl)

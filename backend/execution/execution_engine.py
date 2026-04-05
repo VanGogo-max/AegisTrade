@@ -1,75 +1,70 @@
-from dataclasses import dataclass
-from decimal import Decimal
-from enum import Enum
-from typing import Dict, Optional
-from abc import ABC, abstractmethod
+# execution_engine.py
+# Core Execution Engine for GRSM
+# Handles actual order submission, shadow ledger simulation, and thread-safety
 
+import threading
+from typing import Dict, List
 
-class OrderSide(str, Enum):
-    BUY = "buy"
-    SELL = "sell"
+class ShadowLedger:
+    """
+    Minimal shadow ledger to track simulated positions and account state
+    """
+    def __init__(self, starting_balance: float = 100000.0):
+        self.account = {"balance": starting_balance, "used_margin": 0.0}
+        self.positions: Dict[str, Dict] = {}  # e.g., {"BTCUSDT": {"size": 0.05, "entry_price": 25000}}
+        self._lock = threading.RLock()
 
+    def simulate_order(self, order: Dict):
+        with self._lock:
+            symbol = order["symbol"]
+            size = order["size"] * order["direction"]
+            price = order["price"]
 
-class OrderType(str, Enum):
-    MARKET = "market"
-    LIMIT = "limit"
+            pos = self.positions.get(symbol, {"size": 0.0, "entry_price": 0.0})
 
+            new_size = pos["size"] + size
+            if new_size != 0:
+                new_entry_price = (pos["size"]*pos["entry_price"] + size*price)/new_size
+            else:
+                new_entry_price = 0.0
 
-@dataclass(frozen=True)
-class ExecutionRequest:
-    exchange: str
-    symbol: str
-    side: OrderSide
-    quantity: Decimal
-    order_type: OrderType
-    price: Optional[Decimal] = None
-    client_order_id: Optional[str] = None
+            self.positions[symbol] = {"size": new_size, "entry_price": new_entry_price}
 
+            # Update used margin (simplified)
+            self.account["used_margin"] = sum(abs(p["size"]*p["entry_price"]) for p in self.positions.values())
 
-@dataclass(frozen=True)
-class ExecutionResult:
-    exchange: str
-    symbol: str
-    order_id: str
-    status: str
-    filled_quantity: Decimal
-    avg_price: Optional[Decimal]
-    raw_response: dict
-
-
-class BaseExecutionAdapter(ABC):
-
-    @abstractmethod
-    async def place_order(self, request: ExecutionRequest) -> ExecutionResult:
-        pass
-
-    @abstractmethod
-    async def cancel_order(self, symbol: str, order_id: str) -> bool:
-        pass
+    def get_snapshot(self):
+        with self._lock:
+            return {"account": self.account.copy(), "positions": {k:v.copy() for k,v in self.positions.items()}}
 
 
 class ExecutionEngine:
+    """
+    Handles sending orders to real exchanges (mocked for simulation)
+    """
+    def __init__(self):
+        self.shadow_ledger = ShadowLedger()
+        self._lock = threading.RLock()
 
-    def __init__(self) -> None:
-        self._adapters: Dict[str, BaseExecutionAdapter] = {}
+    def send_order(self, order: Dict):
+        """
+        Sends order to exchange.
+        Here it is mocked; in real usage, connect to REST/WebSocket or SDK.
+        """
+        with self._lock:
+            # First simulate order in shadow ledger
+            self.shadow_ledger.simulate_order(order)
 
-    def register_adapter(self, exchange: str, adapter: BaseExecutionAdapter) -> None:
-        if exchange in self._adapters:
-            raise ValueError(f"Adapter for '{exchange}' already registered")
-        self._adapters[exchange] = adapter
+            # Mock actual execution
+            print(f"[ExecutionEngine] Executed order: {order}")
 
-    async def execute(self, request: ExecutionRequest) -> ExecutionResult:
-        adapter = self._get_adapter(request.exchange)
-        if request.order_type == OrderType.LIMIT and request.price is None:
-            raise ValueError("Limit order requires price")
-        return await adapter.place_order(request)
-
-    async def cancel(self, exchange: str, symbol: str, order_id: str) -> bool:
-        adapter = self._get_adapter(exchange)
-        return await adapter.cancel_order(symbol, order_id)
-
-    def _get_adapter(self, exchange: str) -> BaseExecutionAdapter:
-        adapter = self._adapters.get(exchange)
-        if not adapter:
-            raise ValueError(f"No adapter registered for '{exchange}'")
-        return adapter
+    def batch_execute(self, orders: List[Dict]):
+        """
+        Execute multiple orders atomically
+        """
+        results = []
+        with self._lock:
+            for order in orders:
+                self.send_order(order)
+                results.append(order)
+        return results
