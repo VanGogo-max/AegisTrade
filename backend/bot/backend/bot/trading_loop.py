@@ -12,6 +12,7 @@ from backend.state.state_manager import StateManager
 from backend.feeds.price_feed import PriceFeed
 from backend.config.config import Config
 from backend.strategies import TurtleRSIStrategy, VolatilityRegimeDetector
+from backend.notifications.telegram_notifier import TelegramNotifier
 
 console = Console()
 
@@ -39,6 +40,7 @@ class TradingLoop:
         self.risk_engine = RiskEngine(account_equity=Config.TRADE_SIZE)
         self.price_feed = PriceFeed()
         self.state = StateManager()
+        self.notifier = TelegramNotifier()
         self.symbol = Config.SYMBOL
         self.running = True
         self.strategy = TurtleRSIStrategy()
@@ -112,6 +114,7 @@ class TradingLoop:
             self.state.update_position({"size_usd": Config.TRADE_SIZE, "entry_price": price})
             self.state.add_trade({"type": "buy", "price": price})
             logger.success(f"OPEN LONG | size=${Config.TRADE_SIZE} | entry={price}")
+            await self.notifier.notify_buy(self.symbol, price, Config.TRADE_SIZE)
 
         elif action == "close":
             entry = self.state.get_position().get("entry_price", price)
@@ -119,6 +122,7 @@ class TradingLoop:
             self.state.clear_position()
             self.state.add_trade({"type": "sell", "price": price})
             logger.success(f"CLOSE | exit={price} | pnl={pnl_pct:+.2f}%")
+            await self.notifier.notify_sell(self.symbol, price, pnl_pct)
 
     def _log_status(self, price, position, decision):
         size = position.get("size_usd", 0)
