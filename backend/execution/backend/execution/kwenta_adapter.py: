@@ -1,0 +1,96 @@
+import time
+from decimal import Decimal
+
+import aiohttp
+from loguru import logger
+
+from backend.execution.execution_engine import (
+    BaseExecutionAdapter,
+    ExecutionRequest,
+    ExecutionResult,
+    OrderSide,
+    OrderType,
+)
+from backend.config.config import Config
+
+
+class KwentaAdapter(BaseExecutionAdapter):
+
+    BASE_URL = "https://api.kwenta.io/v1"
+
+    MARKET_KEYS = {
+        "BTC": "sBTC",
+        "ETH": "sETH",
+        "SOL": "sSOL",
+        "ARB": "sARB",
+    }
+
+    def __init__(self):
+        self.private_key = Config.KWENTA_PRIVATE_KEY if hasattr(Config, "KWENTA_PRIVATE_KEY") else Config.DEX_PRIVATE_KEY
+        self.wallet = Config.DEX_WALLET_ADDRESS
+        self.rpc_url = Config.OPTIMISM_RPC_URL
+
+    async def place_order(self, request: ExecutionRequest) -> ExecutionResult:
+        if Config.DRY_RUN:
+            logger.debug(f"[DRY RUN Kwenta] {request.side} {request.quantity} {request.symbol}")
+            return ExecutionResult(
+                exchange="kwenta",
+                symbol=request.symbol,
+                order_id=f"kwenta-dry-{int(time.time())}",
+                status="filled",
+                filled_quantity=request.quantity,
+                avg_price=request.price or Decimal("0"),
+                raw_response={},
+            )
+
+        market_key = self._market_key(request.symbol)
+        is_long = request.side == OrderSide.BUY
+
+        payload = {
+            "marketKey": market_key,
+            "sizeDelta": str(request.quantity * (1 if is_long else -1)),
+            "desiredFillPrice": str(request.price or "0"),
+            "account": self.wallet,
+            "orderType": 0 if request.order_type == OrderType.MARKET else 1,
+            "nonce": int(time.time() * 1000),
+            "signature": self.private_key,
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.BASE_URL}/orders",
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            ) as resp:
+                data = await resp.json()
+                logger.debug(f"Kwenta response: {data}")
+
+                return ExecutionResult(
+                    exchange="kwenta",
+                    symbol=request.symbol,
+                    order_id=str(data.get("id", f"kwenta-{int(time.time())}")),
+                    status=data.get("status", "submitted"),
+                    filled_quantity=request.quantity,
+                    avg_price=request.price,
+                    raw_response=data,
+                )
+
+    async def cancel_order(self, symbol: str, order_id: str) -> bool:
+        if Config.DRY_RUN:
+            logger.debug(f"[DRY RUN Kwenta] cancel {order_id}")
+            return True
+
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(
+                f"{self.BASE_URL}/orders/{order_id}",
+                json={"account": self.wallet},
+            ) as resp:
+                data = await resp.json()
+                return data.get("status") in ("cancelled", "ok")
+
+    def _market_key(self, symbol: str) -> str:
+        base = symbol.split("-")[0].upper()
+        key = self.MARKET_KEYS.get(base)
+        if not key:
+            raise ValueError(f"Kwenta: unknown market for {symbol}")
+        return key
