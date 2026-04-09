@@ -43,3 +43,5 @@ msgpack>=1.0.7
 
 # Security
 cryptography>=42.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
