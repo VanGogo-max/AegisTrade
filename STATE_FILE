@@ -1,0 +1,1 @@
+with open(STATE_FILE, "w") as f:\n            import json; json.dump(kwargs, f)\n    except Exception as e:\n        pass/' /workspaces/AegisTrade/backend/bot/trading_loop.py
