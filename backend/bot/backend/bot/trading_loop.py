@@ -19,7 +19,7 @@ from backend.notifications.telegram_notifier import TelegramNotifier
 
 console = Console()
 
-STATE_FILE = "/tmp/aegis_state.json"
+STATE_FILE = "/workspaces/AegisTrade/aegis_state.json"
 
 
 def update_bot_state(**kwargs):
@@ -92,7 +92,6 @@ class TradingLoop:
         self._log_status(price, position, decision)
         await self._execute(decision, price)
 
-        # Push live data to dashboard via file
         size = position.get("size_usd", 0)
         entry = position.get("entry_price", 0)
         pnl_str = "-"
