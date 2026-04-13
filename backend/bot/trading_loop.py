@@ -1,4 +1,4 @@
-AegisTrade — Trading Loop
+AegisTrade - Trading Loop
 """
 from __future__ import annotations
 import asyncio
