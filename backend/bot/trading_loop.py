@@ -156,4 +156,3 @@ def get_loop() -> TradingLoop:
     if _loop_instance is None:
         _loop_instance = TradingLoop()
     return _loop_instance
-    404: Not Found
