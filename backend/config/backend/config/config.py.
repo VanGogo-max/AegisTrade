@@ -1,0 +1,77 @@
+"""
+AegisTrade - Central Configuration
+"""
+from __future__ import annotations
+import os
+from typing import List
+
+DRY_RUN: bool = os.getenv("DRY_RUN", "true").lower() != "false"
+
+INITIAL_CAPITAL: float = float(os.getenv("INITIAL_CAPITAL", "50.0"))
+RISK_PER_TRADE_PCT: float = 0.005
+DAILY_LOSS_LIMIT_PCT: float = 0.01
+DAILY_STOP_PCT: float = 0.02
+WEEKLY_LOSS_LIMIT_PCT: float = 0.03
+WEEKLY_SYSTEM_LOCK_PCT: float = 0.05
+LEVERAGE: int = 1
+MIN_FEE_PCT: float = 0.001
+MAX_SLIPPAGE_PCT: float = 0.0005
+
+MAX_DAILY_LOSS: float = INITIAL_CAPITAL * DAILY_LOSS_LIMIT_PCT
+MAX_DRAWDOWN_PCT: float = DAILY_STOP_PCT * 100
+MAX_POSITION_SIZE: float = INITIAL_CAPITAL * RISK_PER_TRADE_PCT
+
+TIMEFRAME: str = "15m"
+TURTLE_LOOKBACK: int = 20
+ATR_PERIOD: int = 14
+ATR_STOP_MULTIPLIER: float = 2.0
+OPENING_RANGE_TP_MULTIPLIER: float = 2.0
+HMM_MIN_BAR_STABILITY: int = 3
+HMM_N_STATES: int = 5
+
+DEFAULT_SYMBOL: str = os.getenv("DEFAULT_SYMBOL", "BTC-USDT")
+SUPPORTED_SYMBOLS: List[str] = [
+    "BTC-USDT", "ETH-USDT", "SOL-USDT", "ARB-USDT"
+]
+
+HYPERLIQUID_API: str = "https://api.hyperliquid.xyz"
+DYDX_API: str = "https://indexer.dydx.trade/v4"
+GMX_SUBGRAPH: str = "https://api.thegraph.com/subgraphs/name/gmx-io/gmx-stats"
+APEX_API: str = "https://pro.apex.exchange/api/v2"
+KWENTA_API: str = "https://api.kwenta.io"
+VERTEX_API: str = "https://gateway.prod.vertexprotocol.com/v1"
+
+PREFERRED_DEX_ORDER: List[str] = [
+    "hyperliquid", "dydx", "gmx", "vertex", "apex", "kwenta"
+]
+MAX_RETRIES: int = 3
+RETRY_DELAY_S: float = 1.5
+PRICE_FEED_TIMEOUT_S: float = 5.0
+POLL_INTERVAL_S: float = 15.0
+
+ADMIN_HOST: str = "0.0.0.0"
+ADMIN_PORT: int = int(os.getenv("ADMIN_PORT", "8080"))
+ADMIN_TOKEN: str = os.getenv("ADMIN_TOKEN", "aegis-dev-token")
+
+POLYGON_RPC: str = os.getenv("POLYGON_RPC", "https://polygon-rpc.com")
+REFERRAL_CONTRACT: str = os.getenv("REFERRAL_CONTRACT", "")
+SUBSCRIPTION_TIERS: dict = {
+    "basic":  {"price_usdt": 19.9,  "max_capital": 200},
+    "pro":    {"price_usdt": 49.9,  "max_capital": 2000},
+    "elite":  {"price_usdt": 99.9,  "max_capital": None},
+}
+
+STATE_FILE: str = os.getenv("STATE_FILE", "data/state.json")
+TRADE_HISTORY_FILE: str = os.getenv("TRADE_HISTORY_FILE", "data/trades.json")
+REFERRAL_FILE: str = os.getenv("REFERRAL_FILE", "data/referrals.json")
+
+DEFAULT_LANG: str = os.getenv("LANG", "en")
+
+BACKTEST_TRAIN_DAYS: int = 252
+BACKTEST_TEST_DAYS: int = 180
+
+LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE: str = os.getenv("LOG_FILE", "logs/aegis.log")
+
+SLIPPAGE_PCT: float = MAX_SLIPPAGE_PCT
+RISK_PCT: float = RISK_PER_TRADE_PCT * 100
